@@ -1,0 +1,4 @@
+INSERT x number
+INSERT y string
+ASSIGN z 15
+ASSIGN y 76

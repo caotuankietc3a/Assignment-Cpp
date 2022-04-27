@@ -1,0 +1,2 @@
+INSERT x number
+INSERT x string
