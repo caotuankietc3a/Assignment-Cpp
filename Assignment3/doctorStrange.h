@@ -32,7 +32,6 @@ struct Livitation {
     this->has_Livitation = false;
     this->is_real = false;
     this->is_deprived = false;
-    // this->resist_damage = 3; //check
     this->resist_damage = 0;
   }
 
@@ -96,10 +95,12 @@ struct Wong {
   }
 
   bool check_real_Wong() {
-    if (this->meeting) {
-      return this->is_real;
-    }
-    return false;
+    std::cout << "meeting: " << meeting << std::endl;
+    // if (this->meeting) {
+    std::cout << "is_real: " << is_real << std::endl;
+    //   return this->is_real;
+    // }
+    return (this->meeting && this->is_real);
   }
 
   void get_rid_of_fake_Wong() {
@@ -175,7 +176,7 @@ struct PoisonousMushroom {
   }
 
   void activate_PoisonousMushroom() {
-    this->times = 2;
+    this->times = 3;
     this->is_ate = true;
   }
 
@@ -304,7 +305,7 @@ bool check_prime(int n) {
   if (n < 2)
     return false;
 
-  for (int i = 2; i < sqrt(n); i++) {
+  for (int i = 2; i <= sqrt(n); i++) {
     if (n % i == 0)
       return false;
   }
@@ -312,12 +313,11 @@ bool check_prime(int n) {
 }
 
 int nearest_hp_prime(int hp) {
-  while (hp < 999) {
-    if (check_prime(hp))
-      return hp;
+  hp++;
+  while (!check_prime(hp)) {
     hp++;
   }
-  return -1;
+  return hp;
 }
 
 long long Fibonacci(int n) {
@@ -509,6 +509,9 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
     pre_event_th = event_th;
 
     string str = tokenize(events, start, "#");
+    // std::cout << "str: " << str << std::endl;
+    if (str == "")
+      return -1;
     event_th++;
     string witchcraft = "";
     int event_code = get_event_code(str, witchcraft, " ");
@@ -522,8 +525,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
 
     // Poisonous mushroom gathering (event 11)
     if (doctor_strange.mushroom.times > 0) {
-      if (!doctor_strange.mushroom.is_ate)
-        doctor_strange.LV = doctor_strange.LV > 3 ? doctor_strange.LV - 2 : 1;
+      doctor_strange.LV = doctor_strange.LV > 3 ? doctor_strange.LV - 2 : 1;
       doctor_strange.mushroom.times--;
     }
 
@@ -541,6 +543,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       int LV0 = event_th > 6 ? (b > 5 ? b : 5) : b;
 
       int nearest_prime = nearest_hp_prime(doctor_strange.HP);
+      // std::cout << "nearest_prime: " << nearest_prime << std::endl;
       int g_function = (event_th + nearest_prime) % 100;
       // cout << "b: " << b << endl;
       // cout << "LV0: " << LV0 << endl;
@@ -570,8 +573,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
         calculate_exp_lv_hp_maxhp(doctor_strange, exp);
         if ((doctor_strange.wong.meeting && doctor_strange.wong.is_real)) {
           doctor_strange.wong.harm_help_times--;
-          if (doctor_strange.wong.harm_help_times <= 0)
-            doctor_strange.wong.comeback_to_KamarTaj();
+          // if (doctor_strange.wong.harm_help_times <= 0)
+          //   doctor_strange.wong.comeback_to_KamarTaj();
         }
 
         break;
@@ -583,19 +586,27 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
         int damage = 0;
         if (doctor_strange.livitation.check_livitation()) {
           damage = base_damage * LV0 * 10 * (100 - g_function) / 100;
+          // std::cout << "g_function: " << g_function << std::endl;
+          // std::cout << "damage: " << damage << std::endl;
+          // std::cout << "base_damage: " << base_damage << std::endl;
+          // std::cout << "LV0: " << LV0 << std::endl;
           doctor_strange.livitation.resist_damage--;
         } else {
           damage = base_damage * LV0 * 10;
         }
 
-        doctor_strange.wong.harm_help_times--;
+        if (doctor_strange.wong.meeting && !doctor_strange.wong.is_real)
+          doctor_strange.wong.harm_help_times--;
         doctor_strange.HP -= damage;
       }
       break;
     }
     case 6: {
-        // Livitation event
+      if (!check_str_code(witchcraft))
+        return -1;
+      // Livitation event
       int nearest_prime = nearest_hp_prime(doctor_strange.HP);
+      // std::cout << "nearest_prime: " << nearest_prime << std::endl;
       int g_function = (event_th + nearest_prime) % 100;
 
       int count_attack = 0;
@@ -603,18 +614,19 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
 
       number_of_witchcraft(witchcraft, "attack", 0, 0, count_attack);
       number_of_witchcraft(witchcraft, "defense", 0, 0, count_defence);
+      std::cout << "count_attack: " << count_attack << std::endl;
+      std::cout << "count_defence: " << count_defence << std::endl;
 
       bool check_livitation = doctor_strange.livitation.check_livitation();
-      if (check_livitation) {
-        doctor_strange.livitation.resist_damage--;
-      }
-      int blood_loss_reduction_rate = check_livitation
-                                          ? count_defence * 10 + g_function
-                                          : count_defence * 10;
-      int winning_rate =
-          check_livitation ? count_attack * 10 + g_function : count_attack * 10;
+      int blood_loss_reduction_rate =
+          check_livitation ? (int)(count_defence * 10 + g_function)
+                           : (int)(count_defence * 10);
+      int winning_rate = check_livitation
+                             ? (int)(count_attack * 10 + g_function)
+                             : (int)(count_attack * 10);
       int gargantos_attack = (event_code + witchcraft.size()) % 100;
 
+      // std::cout << "g_function: " << g_function << std::endl;
       cout << "winning_rate: " << winning_rate << endl;
       cout << "blood_loss_reduction_rate: " << blood_loss_reduction_rate
            << endl;
@@ -624,8 +636,10 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
         calculate_exp_lv_hp_maxhp(doctor_strange, 200);
       } else {
         if (blood_loss_reduction_rate < 100) {
+          if (check_livitation) {
+            doctor_strange.livitation.resist_damage--;
+          }
           if (doctor_strange.HP >= 100) {
-              std::cout << "message" << std::endl;
             doctor_strange.HP -=
                 doctor_strange.HP * (100 - blood_loss_reduction_rate) / 100;
 
@@ -645,6 +659,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
           if (doctor_strange.LV > 10) {
             doctor_strange.LV = 10;
           }
+          if (!doctor_strange.wong.check_real_Wong())
+            doctor_strange.wong.get_rid_of_fake_Wong();
         } else {
           if (!doctor_strange.wong.check_real_Wong()) {
             doctor_strange.livitation.reset_real_Livitation();
@@ -677,21 +693,26 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       }
 
       // defeat fake Wong!
-      doctor_strange.wong.harm_help_times--;
+      if (doctor_strange.wong.meeting &&
+          doctor_strange.wong.harm_help_times > 0)
+        doctor_strange.wong.harm_help_times--;
 
-      if (doctor_strange.wong.harm_help_times <= 0 &&
-          doctor_strange.wong.check_real_Wong()) {
-        doctor_strange.wong.comeback_to_KamarTaj();
-      }
+      // if (doctor_strange.wong.harm_help_times <= 0 &&
+      //     doctor_strange.wong.check_real_Wong()) {
+      //   doctor_strange.wong.comeback_to_KamarTaj();
+      // }
       break;
     }
     case 9: {
       doctor_strange.HP = doctor_strange.MAX_HP;
       doctor_strange.wong.get_rid_of_fake_Wong();
       doctor_strange.mushroom.inactivate_PoisonousMushroom();
+      doctor_strange.livitation.reset_livitation();
       break;
     }
     case 10: {
+      std::cout << "Fibonacci: " << Fibonacci(doctor_strange.HP - 1)
+                << std::endl;
       doctor_strange.HP += Fibonacci(doctor_strange.HP - 1);
       break;
     }
@@ -702,8 +723,9 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
           doctor_strange.mushroom.activate_PoisonousMushroom();
       }
       // real and unreal Wong help and harm Doctor_Strange!
-      if (doctor_strange.wong.harm_help_times >= 1)
-        doctor_strange.wong.harm_help_times--;
+      if (doctor_strange.wong.meeting)
+        if (doctor_strange.wong.harm_help_times >= 1)
+          doctor_strange.wong.harm_help_times--;
       break;
     }
     case 12: {
@@ -817,7 +839,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
     case 15: {
       if (!doctor_strange.time_throwback.is_activated &&
           doctor_strange.TS > 0) {
-          std::cout << "case 15 is running!!!" << std::endl;
+        std::cout << "case 15 is running!!!" << std::endl;
         if (doctor_strange.HP < doctor_strange.time_throwback.max_HPs) {
           doctor_strange.HP = doctor_strange.time_throwback.max_HPs;
           doctor_strange.LV = 10;
@@ -859,15 +881,20 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       }
     }
 
-    if (doctor_strange.wong.harm_help_times <= 0)
+    if (doctor_strange.wong.harm_help_times <= 0) {
+      if (doctor_strange.wong.check_real_Wong()) {
+        doctor_strange.wong.comeback_to_KamarTaj();
+      }
       doctor_strange.wong.harm_help_times = 0;
+    }
 
     if (doctor_strange.LV >= 7) {
       doctor_strange.wong.get_rid_of_fake_Wong();
     }
 
     if (!doctor_strange.time_throwback.is_activated)
-      doctor_strange.time_throwback.store_TimeThrowback(doctor_strange.HP, pre_start,pre_event_th);
+      doctor_strange.time_throwback.store_TimeThrowback(
+          doctor_strange.HP, pre_start, pre_event_th);
 
     cout << "Doctor: " << doctor_strange.MAX_HP << " " << doctor_strange.HP
          << " " << doctor_strange.LV << " " << doctor_strange.EXP << " "
