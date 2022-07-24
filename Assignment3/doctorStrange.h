@@ -29,12 +29,14 @@ struct Livitation {
   bool is_real;
   int resist_damage;
   bool is_deprived;
+  int increased_LV;
 
   Livitation() {
     this->has_Livitation = false;
     this->is_real = false;
     this->is_deprived = false;
     this->resist_damage = 0;
+    this->increased_LV = 0;
   }
 
   void assign(bool has_Livitation, int resist_damage, bool is_real) {
@@ -64,6 +66,8 @@ struct Livitation {
     this->is_deprived = false;
     this->has_Livitation = true;
   }
+
+  void store_increased_LV(int lv) { this->increased_LV = lv; }
 };
 
 struct Wong {
@@ -79,6 +83,7 @@ struct Wong {
   }
 
   void meeting_real_Wong() {
+    // std::cout << "sssssssssssssdddddddddddddddddddd" << std::endl;
     this->is_real = true;
     this->meeting = true;
     this->harm_help_times = 3;
@@ -540,8 +545,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
   /// Students have to complete this function and DO NOT modify any parameters
   /// in this function.
   int result = 0;
-  cout << HP << " " << LV << " " << EXP << " " << TS << endl;
-  cout << events << endl;
+  // cout << HP << " " << LV << " " << EXP << " " << TS << endl;
+  // cout << events << endl;
   int event_size = (int)events.size();
 
   if (events[0] != '!' || events[event_size - 1] != '!')
@@ -552,21 +557,32 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
   int pre_start = 1;
   int pre_event_th = 0;
   Doctor_Strange doctor_strange(stoi(HP), stoi(LV), stoi(EXP), stoi(TS));
+  if (doctor_strange.HP <= 0 || doctor_strange.HP >= 1000)
+    return -1;
+  if (doctor_strange.LV < 1 || doctor_strange.LV > 10)
+    return -1;
+  if (doctor_strange.EXP < 0 || doctor_strange.EXP > 100)
+    return -1;
+  if (doctor_strange.TS < 0 || doctor_strange.TS > 5)
+    return -1;
 
   do {
 
     // std::cout << "event_th: " << event_th << std::endl;
     // std::cout << "start: " << start << std::endl;
     // std::cout << "HP: " << doctor_strange.HP << std::endl;
-    pre_start = start;
-    pre_event_th = event_th;
+    // pre_start = start;
+    // pre_event_th = event_th;
 
     string str = tokenize(events, start, "#");
-    if(str[str.size() - 1] == '!') str = str.substr(0, str.size() - 1);
+    if (str[str.size() - 1] == '!')
+      str = str.substr(0, str.size() - 1);
     // std::cout << "str: " << str << std::endl;
     if (str == "")
       return -1;
     event_th++;
+    pre_start = start;
+    pre_event_th = event_th;
     string witchcraft = "";
     int event_code = get_event_code(str, witchcraft, " ");
     if (event_code == -1)
@@ -576,6 +592,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
         doctor_strange.livitation.resist_damage <= 0) {
       if (doctor_strange.LV < 3) {
         doctor_strange.LV = 1;
+      } else {
+        doctor_strange.LV -= doctor_strange.livitation.increased_LV;
       }
     }
 
@@ -585,7 +603,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       doctor_strange.mushroom.times--;
     }
 
-    std::cout << "event_code: " << event_code << std::endl;
+    // std::cout << "event_code: " << event_code << std::endl;
     // std::cout << "event_th: " << event_th << std::endl;
     // std::cout << "start: " << start << std::endl;
     // std::cout << "witchcraft: " << witchcraft << "@@@" << std::endl;
@@ -670,8 +688,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
 
       number_of_witchcraft(witchcraft, "attack", 0, 0, count_attack);
       number_of_witchcraft(witchcraft, "defense", 0, 0, count_defence);
-      std::cout << "count_attack: " << count_attack << std::endl;
-      std::cout << "count_defence: " << count_defence << std::endl;
+      // std::cout << "count_attack: " << count_attack << std::endl;
+      // std::cout << "count_defence: " << count_defence << std::endl;
 
       bool check_livitation = doctor_strange.livitation.check_livitation();
       int blood_loss_reduction_rate =
@@ -683,10 +701,10 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       int gargantos_attack = (event_code + witchcraft.size()) % 100;
 
       // std::cout << "g_function: " << g_function << std::endl;
-      cout << "winning_rate: " << winning_rate << endl;
-      cout << "blood_loss_reduction_rate: " << blood_loss_reduction_rate
-           << endl;
-      cout << "gargantos_attack: " << gargantos_attack << endl;
+      // cout << "winning_rate: " << winning_rate << endl;
+      // cout << "blood_loss_reduction_rate: " << blood_loss_reduction_rate
+      //      << endl;
+      // cout << "gargantos_attack: " << gargantos_attack << endl;
       if (winning_rate > gargantos_attack) {
         doctor_strange.TS += 1;
         calculate_exp_lv_hp_maxhp(doctor_strange, 200);
@@ -711,14 +729,25 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       if (!doctor_strange.livitation.is_deprived) {
         if (!doctor_strange.livitation.has_Livitation) {
           doctor_strange.livitation.assign(true, 3, true);
-          doctor_strange.LV += 2;
-          if (doctor_strange.LV > 10) {
-            doctor_strange.LV = 10;
+          if (doctor_strange.LV <= 8) {
+            doctor_strange.livitation.store_increased_LV(2);
+            doctor_strange.LV += 2;
+          } else if (doctor_strange.LV == 9) {
+            doctor_strange.livitation.store_increased_LV(1);
+            doctor_strange.LV += 1;
           }
+          // doctor_strange.LV += 2;
           if (!doctor_strange.wong.check_real_Wong())
             doctor_strange.wong.get_rid_of_fake_Wong();
         } else {
           if (!doctor_strange.wong.check_real_Wong()) {
+            if (!doctor_strange.livitation.is_real) {
+              doctor_strange.LV += doctor_strange.livitation.increased_LV;
+              if (doctor_strange.LV > 10) {
+                doctor_strange.LV = 10;
+              }
+            }
+            // Recover Livitation function
             doctor_strange.livitation.reset_real_Livitation();
             doctor_strange.wong.get_rid_of_fake_Wong();
           }
@@ -743,6 +772,11 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
         // change unreal livitation if doctor_strange has one!
         if (doctor_strange.livitation.has_Livitation) {
           doctor_strange.livitation.is_real = false;
+          if (doctor_strange.LV < 3) {
+            doctor_strange.LV = 1;
+          } else {
+            doctor_strange.LV -= doctor_strange.livitation.increased_LV;
+          }
           doctor_strange.wong.harm_help_times--;
         }
         break;
@@ -767,8 +801,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       break;
     }
     case 10: {
-      std::cout << "Fibonacci: " << Fibonacci(doctor_strange.HP - 1)
-                << std::endl;
+      // std::cout << "Fibonacci: " << Fibonacci(doctor_strange.HP - 1)
+      //           << std::endl;
       doctor_strange.HP += Fibonacci(doctor_strange.HP - 1);
       break;
     }
@@ -818,6 +852,12 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       } else {
         doctor_strange.wanda.activate(true, false, doctor_strange.TS);
         doctor_strange.livitation.deprived_Livitation();
+
+        if (doctor_strange.LV < 3)
+          doctor_strange.LV = 1;
+        else
+          doctor_strange.LV -= doctor_strange.livitation.increased_LV;
+
         doctor_strange.TS = 0;
         calculate_exp_lv_hp_maxhp(doctor_strange, 15);
       }
@@ -837,20 +877,23 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       int index_col, index_row;
       int min_sum = find_smallest_sum_of_defense_layer(defense_layer, index_row,
                                                        index_col, m);
-      std::cout << "min_sum: " << min_sum << std::endl;
-      std::cout << "index_col: " << index_col << std::endl;
-      std::cout << "index_row: " << index_row << std::endl;
+      // std::cout << "min_sum: " << min_sum << std::endl;
+      // std::cout << "index_col: " << index_col << std::endl;
+      // std::cout << "index_row: " << index_row << std::endl;
       for (int i = 0; i < ROW_DEFENSE_LAYER; i++) {
         for (int j = 0; j < COL_DEFENSE_LAYER; j++) {
           std::cout << defense_layer[i][j] << " ";
         }
         std::cout << std::endl;
       }
+      if (!doctor_strange.wong.check_real_Wong()) {
+        doctor_strange.wong.get_rid_of_fake_Wong();
+      }
       if (check_increase_defense_layer(defense_layer, index_row, index_col,
                                        m)) {
         doctor_strange.HP += (index_col + index_row + 2) * min_sum;
       } else {
-        std::cout << "................" << std::endl;
+        // std::cout << "................" << std::endl;
         doctor_strange.HP -= (index_col + index_row + 2) * min_sum;
         if (doctor_strange.wanda.success_negotiate) {
           if (doctor_strange.HP <= 0)
@@ -867,8 +910,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       int located_doorway = get_located_door(witchcraft, door_array, " ");
       if (located_doorway == -1)
         return -1;
-      std::cout << "door_array: " << door_array << std::endl;
-      std::cout << "located_doorway: " << located_doorway << std::endl;
+      // std::cout << "door_array: " << door_array << std::endl;
+      // std::cout << "located_doorway: " << located_doorway << std::endl;
       if (!doctor_strange.doors.init_doors(door_array)) {
         return -1;
       }
@@ -877,9 +920,13 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
                                         doctor_strange.doors.size))
         return -1;
 
+      if (!doctor_strange.wong.check_real_Wong()) {
+        doctor_strange.wong.get_rid_of_fake_Wong();
+      }
+
       if (escape_vitual_space(doctor_strange, located_doorway,
                               num_of_movements)) {
-        std::cout << "num_of_movements: " << num_of_movements << std::endl;
+        // std::cout << "num_of_movements: " << num_of_movements << std::endl;
         doctor_strange.LV = 1;
         doctor_strange.HP -= num_of_movements * (event_th % 10) * 7;
       } else {
@@ -899,7 +946,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
     case 15: {
       if (!doctor_strange.time_throwback.is_activated &&
           doctor_strange.TS > 0) {
-        std::cout << "case 15 is running!!!" << std::endl;
+        // std::cout << "case 15 is running!!!" << std::endl;
         if (doctor_strange.HP < doctor_strange.time_throwback.max_HPs) {
           doctor_strange.HP = doctor_strange.time_throwback.max_HPs;
           doctor_strange.LV = 10;
@@ -913,7 +960,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       break;
     }
     default: {
-      std::cout << "Default is running!!" << std::endl;
+      // std::cout << "Default is running!!" << std::endl;
       return -1;
       break;
     }
@@ -950,40 +997,43 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
     }
 
     if (doctor_strange.LV >= 7) {
-      doctor_strange.wong.get_rid_of_fake_Wong();
+      if (!doctor_strange.wong.check_real_Wong()) {
+        doctor_strange.wong.get_rid_of_fake_Wong();
+      }
     }
 
     if (!doctor_strange.time_throwback.is_activated)
       doctor_strange.time_throwback.store_TimeThrowback(
           doctor_strange.HP, pre_start, pre_event_th);
-
-    cout << "Doctor: " << doctor_strange.MAX_HP << " " << doctor_strange.HP
-         << " " << doctor_strange.LV << " " << doctor_strange.EXP << " "
-         << doctor_strange.TS << endl;
-
-    cout << "Livitation: " << doctor_strange.livitation.has_Livitation << " "
-         << doctor_strange.livitation.is_real << " "
-         << doctor_strange.livitation.resist_damage << " "
-         << doctor_strange.livitation.is_deprived << endl;
-
-    cout << "Wong: " << doctor_strange.wong.harm_help_times << " "
-         << doctor_strange.wong.is_real << " " << doctor_strange.wong.meeting
-         << " " << doctor_strange.wong.returned_to_KamarTaj << endl;
-
-    std::cout << "Mushroom: " << doctor_strange.mushroom.times << " "
-              << doctor_strange.mushroom.is_ate << std::endl;
-
-    std::cout << "Wanda: " << doctor_strange.wanda.chance_to_kill << " "
-              << doctor_strange.wanda.success_negotiate << " "
-              << doctor_strange.wanda.doctor_ts << std::endl;
-
-    std::cout << "TimeThrowback: " << doctor_strange.time_throwback.max_HPs
-              << " " << doctor_strange.time_throwback.event_th << " "
-              << doctor_strange.time_throwback.start << " "
-              << doctor_strange.time_throwback.is_activated << std::endl;
-
-    std::cout << std::endl;
-
+    //
+    // cout << "Doctor: " << doctor_strange.MAX_HP << " " << doctor_strange.HP
+    //      << " " << doctor_strange.LV << " " << doctor_strange.EXP << " "
+    //      << doctor_strange.TS << endl;
+    //
+    // cout << "Livitation: " << doctor_strange.livitation.has_Livitation << " "
+    //      << doctor_strange.livitation.is_real << " "
+    //      << doctor_strange.livitation.resist_damage << " "
+    //      << doctor_strange.livitation.is_deprived << " "
+    //      << doctor_strange.livitation.increased_LV << endl;
+    //
+    // cout << "Wong: " << doctor_strange.wong.harm_help_times << " "
+    //      << doctor_strange.wong.is_real << " " << doctor_strange.wong.meeting
+    //      << " " << doctor_strange.wong.returned_to_KamarTaj << endl;
+    //
+    // std::cout << "Mushroom: " << doctor_strange.mushroom.times << " "
+    //           << doctor_strange.mushroom.is_ate << std::endl;
+    //
+    // std::cout << "Wanda: " << doctor_strange.wanda.chance_to_kill << " "
+    //           << doctor_strange.wanda.success_negotiate << " "
+    //           << doctor_strange.wanda.doctor_ts << std::endl;
+    //
+    // std::cout << "TimeThrowback: " << doctor_strange.time_throwback.max_HPs
+    //           << " " << doctor_strange.time_throwback.event_th << " "
+    //           << doctor_strange.time_throwback.start << " "
+    //           << doctor_strange.time_throwback.is_activated << std::endl;
+    //
+    // std::cout << std::endl;
+    //
   } while (start != event_size && result != -1);
   if (result != -1)
     return doctor_strange.TS + doctor_strange.LV + doctor_strange.EXP +
