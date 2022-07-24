@@ -21,6 +21,8 @@ int ROW_DEFENSE_LAYER = 7;
 std::string tokenize(std::string events, int &start, std::string del = "#");
 int get_event_code(std::string str, std::string &witchcraft,
                    std::string del = " ");
+bool check_int_code(std::string code);
+int tokenize_door(std::string str, int &start, std::string del = " ");
 
 struct Livitation {
   bool has_Livitation;
@@ -94,14 +96,7 @@ struct Wong {
     this->harm_help_times = 0;
   }
 
-  bool check_real_Wong() {
-    std::cout << "meeting: " << meeting << std::endl;
-    // if (this->meeting) {
-    std::cout << "is_real: " << is_real << std::endl;
-    //   return this->is_real;
-    // }
-    return (this->meeting && this->is_real);
-  }
+  bool check_real_Wong() { return (this->meeting && this->is_real); }
 
   void get_rid_of_fake_Wong() {
     this->meeting = false;
@@ -154,12 +149,11 @@ struct Doors {
       return false;
     this->doors = new int[str.size()];
     int start = 0;
-    for (int i = 0; i < str.size() && start != str.size(); i++) {
-      std::string s = tokenize(str, start, " ");
-      if (s == "") {
+    for (int i = 0; i < str.size() && start != -1; i++) {
+      int tokenized_door = tokenize_door(str, start, " ");
+      if (tokenized_door == -1)
         return false;
-      }
-      this->doors[i] = stoi(s);
+      this->doors[i] = tokenized_door;
       this->size += 1;
     }
     return true;
@@ -245,26 +239,77 @@ std::string tokenize(std::string events, int &start, std::string del) {
   return result;
 }
 
+bool check_int_code(std::string code) {
+  if (code == "")
+    return false;
+  for (int i = 0; i < code.size(); i++) {
+    if (!(code[i] >= '0' && code[i] <= '9')) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Becareful with string.substr();
 int get_event_code(std::string str, std::string &witchcraft, std::string del) {
   int size = str.size();
   int end = str.find(del);
+  std::string result = "";
   if (str[size - 1] != '!') {
     witchcraft = str.substr(end + 1, size);
   } else {
     witchcraft = str.substr(end + 1, size - 1 - (end + 1));
   }
-  return stoi(str.substr(0, end));
+  result = str.substr(0, end);
+  if (!check_int_code(result))
+    return -1;
+  int event_code = stoi(result);
+  if (str[size - 1] == '!') {
+    if ((1 <= event_code && event_code <= 5) ||
+        (event_code >= 7 && event_code <= 9)) {
+      if (size != 2)
+        return -1;
+    } else if (10 <= event_code && event_code <= 11 || event_code == 15) {
+      if (size != 3)
+        return -1;
+    }
+  }
+
+  if (str[size - 1] != '!') {
+    if ((1 <= event_code && event_code <= 5) ||
+        (event_code >= 7 && event_code <= 9)) {
+      if (size != 1)
+        return -1;
+    } else if (10 <= event_code && event_code <= 11 || event_code == 15) {
+      if (size != 2)
+        return -1;
+    }
+  }
+  return event_code;
 }
 
 int get_located_door(std::string str, std::string &s, std::string del) {
   int size = str.size();
   if (size < 3)
-    return MIN_INT;
+    return -1;
 
   int end = str.find(del);
+  std::string result = str.substr(0, end);
   s = str.substr(end + 1, size);
-  return stoi(str.substr(0, end));
+  return check_int_code(result) ? stoi(result) : -1;
+}
+
+int tokenize_door(std::string str, int &start, std::string del) {
+  int end = (int)str.find(del, start);
+  std::string result = "";
+  if (end != -1) {
+    result = str.substr(start, end - start);
+    start = end + 1;
+  } else {
+    result = str.substr(start, str.size() - start);
+    start = -1;
+  }
+  return check_int_code(result) ? stoi(result) : -1;
 }
 
 void calculate_exp_lv_hp_maxhp(Doctor_Strange &doctor_strange, int exp) {
@@ -320,13 +365,21 @@ int nearest_hp_prime(int hp) {
   return hp;
 }
 
-long long Fibonacci(int n) {
-  if (n < 0)
-    return -1;
-  else if (n == 0 || n == 1)
-    return n;
+double long Fibonacci(int n) {
+  double long f0 = 0, f1 = 1, fn = 1;
 
-  return Fibonacci(n - 1) + Fibonacci(n - 2);
+  if (n < 0) {
+    return -1;
+  } else if (n == 0 || n == 1) {
+    return n;
+  } else {
+    for (int i = 2; i < n; i++) {
+      f0 = f1;
+      f1 = fn;
+      fn = f0 + f1;
+    }
+  }
+  return fn;
 }
 
 std::string reverse_string(std::string str) {
@@ -509,12 +562,15 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
     pre_event_th = event_th;
 
     string str = tokenize(events, start, "#");
+    if(str[str.size() - 1] == '!') str = str.substr(0, str.size() - 1);
     // std::cout << "str: " << str << std::endl;
     if (str == "")
       return -1;
     event_th++;
     string witchcraft = "";
     int event_code = get_event_code(str, witchcraft, " ");
+    if (event_code == -1)
+      return -1;
 
     if (doctor_strange.livitation.has_Livitation &&
         doctor_strange.livitation.resist_damage <= 0) {
@@ -732,8 +788,9 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
 
       int start_event_12 = 0;
       std::string codes[2]{""};
+      // std::cout << "witchcraft: " << witchcraft << std::endl;
       codes[0] = tokenize(witchcraft, start_event_12, " ");
-      codes[1] = tokenize(witchcraft, start_event_12, " ");
+      codes[1] = tokenize(witchcraft, start_event_12, "#");
 
       // std::cout << "codes0: " << codes[0] << std::endl;
       // std::cout << "codes1: " << codes[1] << std::endl;
@@ -742,6 +799,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
         return -1;
       }
       int ith = codes[1].size() % 10;
+      // std::cout << "ith: " << ith << std::endl;
       if (displacement_characters_to_ith_and_check(inverted_string(codes[0]),
                                                    codes[1], ith)) {
 
@@ -779,20 +837,21 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       int index_col, index_row;
       int min_sum = find_smallest_sum_of_defense_layer(defense_layer, index_row,
                                                        index_col, m);
-      // std::cout << "min_sum: " << min_sum << std::endl;
-      // std::cout << "index_col: " << index_col << std::endl;
-      // std::cout << "index_row: " << index_row << std::endl;
-      // for (int i = 0; i < ROW_DEFENSE_LAYER; i++) {
-      //   for (int j = 0; j < COL_DEFENSE_LAYER; j++) {
-      //     std::cout << defense_layer[i][j] << " ";
-      //   }
-      //   std::cout << std::endl;
-      // }
+      std::cout << "min_sum: " << min_sum << std::endl;
+      std::cout << "index_col: " << index_col << std::endl;
+      std::cout << "index_row: " << index_row << std::endl;
+      for (int i = 0; i < ROW_DEFENSE_LAYER; i++) {
+        for (int j = 0; j < COL_DEFENSE_LAYER; j++) {
+          std::cout << defense_layer[i][j] << " ";
+        }
+        std::cout << std::endl;
+      }
       if (check_increase_defense_layer(defense_layer, index_row, index_col,
                                        m)) {
-        doctor_strange.HP += (index_col + 1) * (index_row + 1) * min_sum;
+        doctor_strange.HP += (index_col + index_row + 2) * min_sum;
       } else {
-        doctor_strange.HP -= (index_col + 1) * (index_row + 1) * min_sum;
+        std::cout << "................" << std::endl;
+        doctor_strange.HP -= (index_col + index_row + 2) * min_sum;
         if (doctor_strange.wanda.success_negotiate) {
           if (doctor_strange.HP <= 0)
             doctor_strange.HP = 1;
@@ -803,12 +862,13 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       break;
     }
     case 14: {
-      if (witchcraft == "")
-        return -1;
+      // std::cout << "witchcraft: " << witchcraft << std::endl;
       std::string door_array = "";
       int located_doorway = get_located_door(witchcraft, door_array, " ");
-      // std::cout << "door_array: " << door_array << "@@@" << std::endl;
-      // std::cout << "located_doorway: " << located_doorway << std::endl;
+      if (located_doorway == -1)
+        return -1;
+      std::cout << "door_array: " << door_array << std::endl;
+      std::cout << "located_doorway: " << located_doorway << std::endl;
       if (!doctor_strange.doors.init_doors(door_array)) {
         return -1;
       }
@@ -819,7 +879,7 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
 
       if (escape_vitual_space(doctor_strange, located_doorway,
                               num_of_movements)) {
-        // std::cout << "num_of_movements: " << num_of_movements << std::endl;
+        std::cout << "num_of_movements: " << num_of_movements << std::endl;
         doctor_strange.LV = 1;
         doctor_strange.HP -= num_of_movements * (event_th % 10) * 7;
       } else {
@@ -853,7 +913,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
       break;
     }
     default: {
-      std::cout << "Default is running!!!" << endl;
+      std::cout << "Default is running!!" << std::endl;
+      return -1;
       break;
     }
     }
@@ -902,7 +963,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
 
     cout << "Livitation: " << doctor_strange.livitation.has_Livitation << " "
          << doctor_strange.livitation.is_real << " "
-         << doctor_strange.livitation.resist_damage << endl;
+         << doctor_strange.livitation.resist_damage << " "
+         << doctor_strange.livitation.is_deprived << endl;
 
     cout << "Wong: " << doctor_strange.wong.harm_help_times << " "
          << doctor_strange.wong.is_real << " " << doctor_strange.wong.meeting
@@ -912,7 +974,8 @@ int handleEvents(string &HP, string &LV, string &EXP, string &TS,
               << doctor_strange.mushroom.is_ate << std::endl;
 
     std::cout << "Wanda: " << doctor_strange.wanda.chance_to_kill << " "
-              << doctor_strange.wanda.success_negotiate << std::endl;
+              << doctor_strange.wanda.success_negotiate << " "
+              << doctor_strange.wanda.doctor_ts << std::endl;
 
     std::cout << "TimeThrowback: " << doctor_strange.time_throwback.max_HPs
               << " " << doctor_strange.time_throwback.event_th << " "
