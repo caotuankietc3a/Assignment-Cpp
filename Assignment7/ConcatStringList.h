@@ -11,8 +11,8 @@ public:
   CharArrayList();
   CharArrayList(const char *str);
   int getLength();
-  char* getString();
-  char& operator[](int index) const;
+  char *getString();
+  char &operator[](int index) const;
   ~CharArrayList();
 };
 
@@ -25,8 +25,23 @@ public:
   CharAlNode();
   CharAlNode(const char *str);
   CharArrayList getLiteralString();
-  CharAlNode*& getNext();
+  CharAlNode *&getNext();
   ~CharAlNode();
+};
+
+struct ReferenceNode {
+private:
+  CharAlNode *node;
+  int numOfRef;
+  ReferenceNode *refNodeNext;
+
+public:
+  ReferenceNode();
+  ReferenceNode(CharAlNode *&node, int numOfRef);
+  ReferenceNode *&getRefNodeNext();
+  CharAlNode *&getNode();
+  void increaseNumOfRef(int num);
+  int getNumOfRef();
 };
 
 class ConcatStringList {
@@ -45,9 +60,6 @@ private:
   int size;
 
 public:
-  // CharAlNode*& getHead();
-  // CharAlNode*& getTail();
-
   ConcatStringList();
   ConcatStringList(const char *str);
   int length() const;
@@ -62,11 +74,19 @@ public:
 public:
   class ReferencesList {
     // TODO: may provide some attributes
+  private:
+    ReferenceNode *refNodeHead;
+    int totalRefs = 0;
 
   public:
+    // ReferencesList();
+    // ReferencesList(CharAlNode *&node, int numOfRef);
     int size() const;
     int refCountAt(int index) const;
+    void increaseTotalRefs(int num);
     std::string refCountsString() const;
+    ReferenceNode *&getRefNodeHead();
+    static void addRefNodeToReferencesList(ConcatStringList::ReferencesList &refList, CharAlNode*& toNode, int numOfRef);
   };
 
   class DeleteStringList {
