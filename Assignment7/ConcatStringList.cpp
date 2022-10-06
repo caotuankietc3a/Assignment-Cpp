@@ -165,8 +165,6 @@ ConcatStringList::~ConcatStringList() {
 
       i = i->getDeleteStrNodeNext();
       if (j) {
-        // j->getRefHead()->decreaseCheckCount(1);
-        // j->getRefTail()->decreaseCheckCount(1);
         delete j;
       }
       delStrList.decreaseTotalLength(1);
@@ -188,6 +186,7 @@ ConcatStringList::~ConcatStringList() {
       }
       deletedRefNode = nextDeletedRefNode;
     }
+    refList.increaseTotalRefs(-refList.size());
     refList.getRefNodeHead() = nullptr;
   }
 }
@@ -314,7 +313,6 @@ ConcatStringList ConcatStringList::subString(int from, int to) const {
   if (from >= to)
     throw logic_error("Invalid range");
 
-  // ConcatStringList newConcatStringList = ConcatStringList();
   int totalLen = 0;
   CharAlNode *node = this->head;
   ConcatStringList newConcatStringList = ConcatStringList();
@@ -351,7 +349,6 @@ ConcatStringList ConcatStringList::subString(int from, int to) const {
         from++;
       }
       newStr[i] = '\0';
-      std::cout << "newSTr: " << newStr << std::endl;
 
       if (isFirstTime) {
         newConcatStringList.head = newConcatStringList.tail =
@@ -396,7 +393,6 @@ ConcatStringList ConcatStringList::reverse() const {
   while (node) {
     char *reversedStr = reverseString(node->getLiteralString()->getString(),
                                       node->getLiteralString()->getLength());
-    std::cout << "reversedStr: " << reversedStr << std::endl;
     if (isFirstTime) {
       newConcatStringList.head = newConcatStringList.tail =
           new CharAlNode(reversedStr);
@@ -443,14 +439,12 @@ ReferenceNode::ReferenceNode() {
   this->node = nullptr;
   this->numOfRef = 0;
   this->refNodeNext = nullptr;
-  // this->checkCount = 0;
 }
 
 ReferenceNode::ReferenceNode(CharAlNode *&node, int numOfRef) {
   this->node = node;
   this->numOfRef = numOfRef;
   this->refNodeNext = nullptr;
-  // this->checkCount = 0;
 }
 
 ReferenceNode::~ReferenceNode() {}
@@ -461,12 +455,6 @@ ReferenceNode *&ReferenceNode::getRefNodeNext() { return this->refNodeNext; }
 
 int ReferenceNode::getNumOfRef() { return this->numOfRef; }
 
-// int ReferenceNode::getCheckCount() { return this->checkCount; }
-
-// void ReferenceNode::increaseCheckCount(int num) { this->checkCount += num; }
-
-// void ReferenceNode::decreaseCheckCount(int num) { this->checkCount -= num; }
-
 void ReferenceNode::increaseNumOfRef(int num) { this->numOfRef += num; }
 
 ReferenceNode *ReferenceNode::decreaseNumOfRef(ReferenceNode *&refNode,
@@ -476,11 +464,6 @@ ReferenceNode *ReferenceNode::decreaseNumOfRef(ReferenceNode *&refNode,
   while (i) {
     if (i->getNode() == toNode) {
       i->numOfRef -= num;
-
-      // if (num == 2)
-      //   i->increaseCheckCount(2);
-      // else
-      //   i->increaseCheckCount(1);
 
       if (i->numOfRef != 0) {
         //////////////// Move i->numOfRef to the bottom //////////////////////
@@ -551,7 +534,6 @@ void ConcatStringList::ReferencesList::addRefNodeToReferencesList(
       newRefNode->getRefNodeNext() = refList.getRefNodeHead();
       refList.getRefNodeHead() = newRefNode;
       refList.increaseTotalRefs(1);
-      std::cout << "refList: " << refList.size() << std::endl;
       return;
     }
     ///////////////// addTail or addBetween //////////////
@@ -567,7 +549,6 @@ void ConcatStringList::ReferencesList::addRefNodeToReferencesList(
     refList.getRefNodeHead() = new ReferenceNode(toNode, numOfRef);
   }
   refList.increaseTotalRefs(1);
-  std::cout << "refList: " << refList.size() << std::endl;
 }
 
 bool ConcatStringList::ReferencesList::checkSumZeroInRefList() {
