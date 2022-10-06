@@ -18,13 +18,13 @@ public:
 
 struct CharAlNode {
 private:
-  CharArrayList literalString;
+  CharArrayList *literalString;
   CharAlNode *next;
 
 public:
   CharAlNode();
   CharAlNode(const char *str);
-  CharArrayList getLiteralString();
+  CharArrayList *&getLiteralString();
   CharAlNode *&getNext();
   ~CharAlNode();
 };
@@ -34,14 +34,35 @@ private:
   CharAlNode *node;
   int numOfRef;
   ReferenceNode *refNodeNext;
+  // int checkCount;
 
 public:
   ReferenceNode();
+  ~ReferenceNode();
   ReferenceNode(CharAlNode *&node, int numOfRef);
   ReferenceNode *&getRefNodeNext();
   CharAlNode *&getNode();
+  // int getCheckCount();
+  // void increaseCheckCount(int num);
+  // void decreaseCheckCount(int num);
   void increaseNumOfRef(int num);
+  static ReferenceNode *decreaseNumOfRef(ReferenceNode *&refNode,
+                                         CharAlNode *&toNode, int num);
   int getNumOfRef();
+};
+
+struct DeleteStringNode {
+private:
+  ReferenceNode *refHead = nullptr;
+  ReferenceNode *refTail = nullptr;
+  DeleteStringNode *deleteStrNodeNext = nullptr;
+
+public:
+  DeleteStringNode(ReferenceNode *&refHead, ReferenceNode *&refTail);
+  ~DeleteStringNode();
+  DeleteStringNode *&getDeleteStrNodeNext();
+  ReferenceNode *&getRefHead();
+  ReferenceNode *&getRefTail();
 };
 
 class ConcatStringList {
@@ -75,26 +96,33 @@ public:
   class ReferencesList {
     // TODO: may provide some attributes
   private:
-    ReferenceNode *refNodeHead;
+    ReferenceNode *refNodeHead = nullptr;
     int totalRefs = 0;
 
   public:
-    // ReferencesList();
-    // ReferencesList(CharAlNode *&node, int numOfRef);
     int size() const;
     int refCountAt(int index) const;
-    void increaseTotalRefs(int num);
     std::string refCountsString() const;
+    void increaseTotalRefs(int num);
     ReferenceNode *&getRefNodeHead();
-    static void addRefNodeToReferencesList(ConcatStringList::ReferencesList &refList, CharAlNode*& toNode, int numOfRef);
+    static void
+    addRefNodeToReferencesList(ConcatStringList::ReferencesList &refList,
+                               CharAlNode *&toNode, int numOfRef);
+    bool checkSumZeroInRefList();
   };
 
   class DeleteStringList {
     // TODO: may provide some attributes
+  private:
+    DeleteStringNode *deleteStrNodehead = nullptr;
+    int length = 0;
 
   public:
     int size() const;
     std::string totalRefCountsString() const;
+    DeleteStringNode *&getDeleteStrNodehead();
+    void increaseTotalLength(int num);
+    void decreaseTotalLength(int num);
   };
 };
 
