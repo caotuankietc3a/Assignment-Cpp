@@ -1,5 +1,23 @@
 #include "ConcatStringTree.h"
+#include <ios>
 #include <string>
+
+long long ParentTree::globalId = 0;
+
+////////////////////////////////////////// ConcatStringTree
+////////////////////////////////////////////
+
+ConcatStringTree::ConcatStringNode::ConcatStringNode(string data,
+                                                     const int &length,
+                                                     const int &leftLength,
+                                                     ConcatStringNode *pL,
+                                                     ConcatStringNode *pR)
+    : data(data), length(length), leftLength(leftLength), pLeft(pL),
+      pRight(pR) {
+  this->pTree->insert(++ParentTree::globalId);
+  this->id = ParentTree::globalId;
+}
+
 ConcatStringTree::ConcatStringTree(const char *s) {
   if (s) {
     const char *i = s;
@@ -77,9 +95,12 @@ string ConcatStringTree::toString() const {
 
 ConcatStringTree
 ConcatStringTree::concat(const ConcatStringTree &otherS) const {
-  return ConcatStringTree(
+  ConcatStringTree concatStringTree = ConcatStringTree(
       new ConcatStringNode("", otherS.length() + this->length(), this->length(),
                            this->pRoot, otherS.pRoot));
+  concatStringTree.pRoot->pRight->pTree->insert(ParentTree::globalId);
+  concatStringTree.pRoot->pLeft->pTree->insert(ParentTree::globalId);
+  return concatStringTree;
 }
 
 ConcatStringTree *ConcatStringTree::subStringHelper(ConcatStringNode *pR,
@@ -151,3 +172,296 @@ ConcatStringTree *ConcatStringTree::reverseHelper(ConcatStringNode *pR) const {
 ConcatStringTree ConcatStringTree::reverse() const {
   return *reverseHelper(this->pRoot);
 }
+
+int ConcatStringTree::getParTreeSize(const string &query) const {
+  ConcatStringNode *node = getConcatStringNode(query);
+  return node->pTree->size();
+}
+
+ConcatStringTree::ConcatStringNode *
+ConcatStringTree::getConcatStringNode(const string &query) const {
+  ConcatStringNode *pR = this->pRoot;
+  for (int i = 0; i < query.length(); i++) {
+    if (!pR)
+      throw runtime_error("Invalid query: reaching NULL");
+    if (query[i] == 'l') {
+      pR = pR->pLeft;
+    } else if (query[i] == 'r') {
+      pR = pR->pRight;
+    } else
+      throw runtime_error("Invalid character of query");
+  }
+  return pR;
+}
+
+string ConcatStringTree::getParTreeStringPreOrder(const string &query) const {
+  ConcatStringNode *node = getConcatStringNode(query);
+  return node->pTree->toStringPreOrder();
+}
+
+ConcatStringTree::~ConcatStringTree() {
+  this->pRoot->pTree->remove(this->pRoot->id);
+  this->pRoot->pLeft->pTree->remove(this->pRoot->id);
+  this->pRoot->pRight->pTree->remove(this->pRoot->id);
+
+  if (this->pRoot->pLeft->pTree->size() <= 0) {
+    delete this->pRoot->pLeft;
+    this->pRoot->pLeft = nullptr;
+  }
+
+  if (this->pRoot->pRight->pTree->size() <= 0) {
+    delete this->pRoot->pRight;
+    this->pRoot->pRight = nullptr;
+  }
+
+  if (this->pRoot->pTree->size() <= 0) {
+    delete this->pRoot;
+    this->pRoot = nullptr;
+  }
+}
+
+////////////////////////////////////////// ParentTree
+////////////////////////////////////////////
+
+int ParentTree::size() const { return this->nE; }
+
+string ParentTree::toStringPreOrderHelper(ParentNode *pR) const {
+  if (!pR)
+    return "";
+  string result = "(id=" + to_string(pR->id) + ");";
+
+  return result + toStringPreOrderHelper(pR->pLeft) +
+         toStringPreOrderHelper(pR->pRight);
+}
+
+string ParentTree::toStringPreOrder() const {
+  string str = "ParentsTree[" + toStringPreOrderHelper(this->pRoot);
+  str[str.length() - 1] = ']';
+  return str;
+}
+
+int ParentTree::getHeightHelper(ParentNode *node) const {
+  if (node == NULL)
+    return 0;
+  int lh = this->getHeightHelper(node->pLeft);
+  int rh = this->getHeightHelper(node->pRight);
+  return (lh > rh ? lh : rh) + 1;
+}
+
+int ParentTree::getHeight() const { return getHeightHelper(this->pRoot); }
+
+ParentTree::ParentNode *ParentTree::rightRotate(ParentNode *x) {
+  ParentNode *y = x->pLeft;
+  ParentNode *z = y->pRight;
+  y->pRight = x;
+  x->pLeft = z;
+  return y;
+}
+
+ParentTree::ParentNode *ParentTree::leftRotate(ParentNode *x) {
+  ParentNode *y = x->pRight;
+  ParentNode *z = y->pLeft;
+  y->pLeft = x;
+  x->pRight = z;
+  return y;
+}
+
+int ParentTree::getBalance(ParentNode *node) const {
+  if (!node)
+    return 0;
+  return getHeightHelper(node->pLeft) - getHeightHelper(node->pRight);
+}
+
+ParentTree::ParentNode *ParentTree::insertHelper(ParentNode *node,
+                                                 const long long &value) {
+  if (!node) {
+    return new ParentNode(value);
+  }
+
+  if (value < node->id)
+    node->pLeft = insertHelper(node->pLeft, value);
+  else if (value >= node->id)
+    node->pRight = insertHelper(node->pRight, value);
+
+  int balance = getBalance(node);
+  if (balance > 1 && value < node->pLeft->id)
+    return rightRotate(node);
+
+  if (balance < -1 && value >= node->pRight->id)
+    return leftRotate(node);
+
+  if (balance > 1 && value > node->pLeft->id) {
+    node->pLeft = leftRotate(node->pLeft);
+    return rightRotate(node);
+  }
+
+  if (balance < -1 && value <= node->pRight->id) {
+    node->pRight = rightRotate(node->pRight);
+    return leftRotate(node);
+  }
+
+  return node;
+}
+
+void ParentTree::insert(const long long &value) {
+  if (ParentTree::globalId >= 10 * 10 * 10 * 10 * 10 * 10 * 10)
+    throw overflow_error("Id is overflow!");
+  this->pRoot = insertHelper(this->pRoot, value);
+  this->nE++;
+}
+
+ParentTree::ParentNode *ParentTree::maxValueNode(ParentNode *node) {
+  if (!node)
+    return nullptr;
+  ParentNode *current = node;
+  while (current->pRight) {
+    current = current->pRight;
+  }
+  return current;
+}
+
+ParentTree::ParentNode *ParentTree::removeHelper(ParentNode *node,
+                                                 const long long &value) {
+  // STEP 1: PERFORM STANDARD BST DELETE
+  if (node == nullptr)
+    return node;
+
+  if (value < node->id)
+    node->pLeft = removeHelper(node->pLeft, value);
+  else if (value > node->id)
+    node->pRight = removeHelper(node->pRight, value);
+  else {
+    // node with only one child or no child
+    if ((node->pLeft == nullptr) || (node->pRight == nullptr)) {
+      ParentNode *temp = node->pLeft ? node->pLeft : node->pRight;
+
+      // No child case
+      if (temp == nullptr) {
+        temp = node;
+        node = nullptr;
+      } else           // One child case
+        *node = *temp; // Copy the contents of
+                       // the non-empty child
+      delete temp;
+    } else {
+      // node with two children: Get the inorder
+      // successor (smallest in the right subtree)
+      ParentNode *temp = maxValueNode(node->pLeft);
+
+      // Copy the inorder successor's
+      // id to this node
+      node->id = temp->id;
+
+      // Delete the inorder successor
+      node->pLeft = removeHelper(node->pLeft, temp->id);
+    }
+  }
+
+  // If the tree had only one node
+  // then return
+  if (node == nullptr)
+    return node;
+
+  int balance = getBalance(node);
+
+  // If this node becomes unbalanced,
+  // then there are 4 cases
+
+  // Left Left Case
+  if (balance > 1 && getBalance(node->pLeft) > 0)
+    return rightRotate(node);
+
+  // Left Right Case
+  if (balance > 1 && getBalance(node->pLeft) < 0) {
+    node->pLeft = leftRotate(node->pLeft);
+    return rightRotate(node);
+  }
+
+  // Right Right Case
+  if (balance < -1 && getBalance(node->pRight) <= 0)
+    return leftRotate(node);
+
+  // Right Left Case
+  if (balance < -1 && getBalance(node->pRight) >= 0) {
+    node->pRight = rightRotate(node->pRight);
+    return leftRotate(node);
+  }
+
+  return node;
+}
+
+void ParentTree::remove(const long long &value) {
+  this->pRoot = removeHelper(this->pRoot, value);
+  this->nE--;
+}
+
+////////////////////////////////////////// Vector
+////////////////////////////////////////////
+
+template <class T> void Vector<T>::setSize(int nE) { this->nE = nE; }
+
+template <class T> Vector<T>::Vector() {
+  this->nE = 0;
+  this->capacity = 50;
+  this->arr = new T[50];
+}
+
+template <class T> Vector<T>::Vector(int nE, int cap) {
+  this->nE = nE;
+  this->capacity = cap;
+  this->arr = new T[cap];
+}
+
+template <class T> int Vector<T>::getSize() { return this->nE; }
+
+template <class T> int Vector<T>::getCap() { return this->capacity; }
+
+template <class T> Vector<T> &Vector<T>::operator=(Vector<T> &newVec) {
+  if (this != &newVec) {
+    delete[] this->arr;
+    this->arr = new T[newVec.capacity];
+    for (int i = 0; i < newVec.size; i++) {
+      this->arr[i] = newVec[i];
+    }
+    this->capacity = newVec.capacity;
+    this->nE = newVec.getSize();
+  }
+
+  return *this;
+}
+
+template <class T> T &Vector<T>::operator[](int index) {
+  return this->arr[index];
+}
+
+template <class T> Vector<T>::~Vector() {
+  delete[] this->arr;
+  this->arr = nullptr;
+  this->nE = 0;
+  this->cap = 0;
+}
+
+template <class T> void Vector<T>::push_back(T newElement) {
+  if (this->nE + 1 >= this->cap) {
+    resize(this->nE, this->cap * 2);
+  }
+  this->arr[this->nE] = newElement;
+  this->nE++;
+}
+
+template <class T> void Vector<T>::resize(int nE, int cap) {
+  T *old = this->arr;
+  this->arr = new T[cap];
+  this->nE = nE;
+  this->cap = cap;
+  for (int i = 0; i < nE; i++) {
+    this->arr[i] = old[i];
+  }
+  delete[] old;
+}
+
+////////////////////////////////////////// LitStringHash
+////////////////////////////////////////////
+
+LitStringHash::LitStringHash(const HashConfig &hashConfig)
+    : hashConfig(hashConfig) {}
