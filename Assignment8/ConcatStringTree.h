@@ -9,10 +9,10 @@ public:
 
 private:
   ConcatStringNode *pRoot = nullptr;
-  int treeLength = 0;
 
 public:
   ConcatStringTree(const char *s);
+  ConcatStringTree(ConcatStringNode *pR) : pRoot(pR) {}
   int length() const;
   char get(int index);
 
@@ -24,9 +24,16 @@ public:
 
   string toString() const;
   string toStringHelper(ConcatStringNode *pR) const;
+
   ConcatStringTree concat(const ConcatStringTree &otherS) const;
+
   ConcatStringTree subString(int from, int to) const;
+  ConcatStringTree *subStringHelper(ConcatStringNode *pR, int &from, int to,
+                                    int &totalLen) const;
+
+  string reverseString(string str) const;
   ConcatStringTree reverse() const;
+  ConcatStringTree *reverseHelper(ConcatStringNode *pR) const;
 
   int getParTreeSize(const string &query) const;
   string getParTreeStringPreOrder(const string &query) const;

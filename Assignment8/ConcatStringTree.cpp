@@ -11,11 +11,10 @@ ConcatStringTree::ConcatStringTree(const char *s) {
       sLength++;
     }
     this->pRoot = new ConcatStringNode(str, sLength);
-    this->treeLength = sLength;
   }
 }
 
-int ConcatStringTree::length() const { return this->treeLength; }
+int ConcatStringTree::length() const { return this->pRoot->length; }
 
 int ConcatStringTree::indexOfHelper(ConcatStringNode *pR, char c) {
   if (!pR)
@@ -30,21 +29,19 @@ int ConcatStringTree::indexOfHelper(ConcatStringNode *pR, char c) {
 }
 
 char ConcatStringTree::get(int index) {
-  if (index >= 0 && index < this->treeLength) {
-    if (this->pRoot) {
-      ConcatStringNode *p = this->pRoot;
-      while (p->pLeft || p->pRight) {
-        if (p->leftLength > index) {
-          p = p->pLeft;
-        } else {
-          index -= p->leftLength;
-          p = p->pRight;
-        }
-      }
-      return p->data[index];
+  if (!(index >= 0 && index < this->pRoot->length)) {
+    throw out_of_range("Index of string is invalid!");
+  }
+  ConcatStringNode *p = this->pRoot;
+  while (p->pLeft || p->pRight) {
+    if (p->leftLength > index) {
+      p = p->pLeft;
+    } else {
+      index -= p->leftLength;
+      p = p->pRight;
     }
   }
-  throw out_of_range("Index of string is invalid!");
+  return p->data[index];
 }
 
 int ConcatStringTree::indexOf(char c) { return indexOfHelper(this->pRoot, c); }
@@ -76,4 +73,81 @@ string ConcatStringTree::toStringHelper(ConcatStringNode *pR) const {
 
 string ConcatStringTree::toString() const {
   return "ConcatStringTree[\"" + toStringHelper(this->pRoot) + "\"]";
+}
+
+ConcatStringTree
+ConcatStringTree::concat(const ConcatStringTree &otherS) const {
+  return ConcatStringTree(
+      new ConcatStringNode("", otherS.length() + this->length(), this->length(),
+                           this->pRoot, otherS.pRoot));
+}
+
+ConcatStringTree *ConcatStringTree::subStringHelper(ConcatStringNode *pR,
+                                                    int &from, int to,
+                                                    int &totalLen) const {
+  if (!pR)
+    return nullptr;
+
+  ConcatStringTree *tLeft = subStringHelper(pR->pLeft, from, to, totalLen);
+  ConcatStringTree *tRight = subStringHelper(pR->pRight, from, to, totalLen);
+
+  if (pR->checkDataIsNull()) {
+    return new ConcatStringTree(tLeft->concat(*tRight));
+  }
+
+  string str = "";
+  if (pR->length + totalLen <= to) {
+    if (from >= pR->length) {
+      from -= totalLen;
+      totalLen += pR->length;
+      return nullptr;
+    }
+    str = pR->data.substr(from, pR->length);
+    from = 0;
+    totalLen += pR->length;
+  } else {
+    str = pR->data.substr(from, to - totalLen);
+    totalLen += pR->length;
+  }
+  return new ConcatStringTree(new ConcatStringNode(str, str.length()));
+}
+
+ConcatStringTree ConcatStringTree::subString(int from, int to) const {
+  if ((from < 0 || from >= this->length()) || (to < 0 || to > this->length()))
+    throw out_of_range("Index of string is invalid");
+
+  if (from >= to)
+    throw logic_error("Invalid range");
+
+  int totalLen = 0;
+  return *subStringHelper(this->pRoot, from, to, totalLen);
+}
+
+string ConcatStringTree::reverseString(string str) const {
+  int n = str.length();
+  for (int i = 0; i < n / 2; i++) {
+    char x = str[i];
+    str[i] = str[n - i - 1];
+    str[n - i - 1] = x;
+  }
+  return str;
+}
+
+ConcatStringTree *ConcatStringTree::reverseHelper(ConcatStringNode *pR) const {
+  if (!pR)
+    return nullptr;
+
+  ConcatStringTree *tRight = reverseHelper(pR->pRight);
+  ConcatStringTree *tLeft = reverseHelper(pR->pLeft);
+
+  if (pR->checkDataIsNull()) {
+    return new ConcatStringTree(tLeft->concat(*tRight));
+  }
+
+  string str = reverseString(pR->data);
+  return new ConcatStringTree(new ConcatStringNode(str, str.length()));
+}
+
+ConcatStringTree ConcatStringTree::reverse() const {
+  return *reverseHelper(this->pRoot);
 }
