@@ -4,6 +4,7 @@
 #include "main.h"
 class ReducedConcatStringTree; // forward declaration
 class ParentTree;
+class LitString;
 
 class ConcatStringTree {
 public:
@@ -63,7 +64,11 @@ public:
 
   public:
     friend ConcatStringTree;
+    friend class ReducedConcatStringTree;
   };
+
+public:
+  friend class ReducedConcatStringTree;
 };
 
 class ParentTree {
@@ -112,7 +117,7 @@ public:
     ParentNode *pRight;
 
   public:
-    friend ParentTree;
+    friend class ParentTree;
   };
 };
 
@@ -124,15 +129,15 @@ private:
 
 public:
   Vector();
-  Vector(int nE, int cap);
+  Vector(int cap);
   ~Vector();
-  void setSize(int nE);
-  int getSize();
-  int getCap();
   T &operator[](int);
   Vector &operator=(Vector &);
-  void push_back(T newElement);
+  void insert(T newElement, int idx);
   void resize(int nE, int cap);
+
+public:
+  friend class LitStringHash;
 };
 
 class LitString {
@@ -143,6 +148,9 @@ private:
 public:
   LitString(string str = "", int numOfLinks = 0)
       : str(str), numOfLinks(numOfLinks) {}
+
+private:
+  friend class LitStringHash;
 };
 
 class HashConfig {
@@ -151,9 +159,11 @@ private:
   double c1, c2;
   double lambda;
   double alpha;
-  int initSize;
+  int initSize; // m
 
+private:
   friend class ReducedConcatStringTree;
+  friend class LitStringHash;
 
 public:
   HashConfig(int p = 0, double c1 = 0, double c2 = 0, double lambda = 0,
@@ -165,71 +175,47 @@ class LitStringHash {
 private:
   Vector<LitString> litStrings;
   HashConfig hashConfig;
+  int lastInsertedIndex;
 
 public:
   LitStringHash(const HashConfig &hashConfig);
   int getLastInsertedIndex() const;
+
+  string toStringHelper(const Vector<LitString> &vecLitStrings) const;
   string toString() const;
+
+  int quadratic(const string &s);
+  long long hashProbing(const long long &hashF, const HashConfig &hashConfig,
+                        int idx) const;
+  long long hashFunc(const string &s, const int &n, const int &m,
+                     const int &p) const;
+  void remove(const string &s);
+
+private:
+  friend long long calculatePower(int base, int powerRaised);
 };
 
-class ReducedConcatStringTree {
+class ReducedConcatStringTree : public ConcatStringTree {
 public:
-  class ReducedConcatStringNode;
-
-public:
-  ReducedConcatStringTree(const char *s, LitStringHash *litStringHash);
   LitStringHash *litStringHash;
+  ReducedConcatStringTree(const char *s, LitStringHash *litStringHash);
+  ~ReducedConcatStringTree();
 
-  int length() const;
-  char get(int index);
+  // ReducedConcatStringTree concat(const ReducedConcatStringTree &otherS)
+  // const;
 
-  int indexOfHelper(ReducedConcatStringNode *pR, char c);
-  int indexOf(char c);
-
-  string toStringPreOrder() const;
-  string toStringPreOrderHelper(ReducedConcatStringNode *pR) const;
-
-  string toString() const;
-  string toStringHelper(ReducedConcatStringNode *pR) const;
-
-  ReducedConcatStringTree concat(const ReducedConcatStringTree &otherS) const;
-
-  ReducedConcatStringTree subString(int from, int to) const;
-  ReducedConcatStringTree *subStringHelper(ReducedConcatStringNode *pR,
-                                           int &from, int to,
-                                           int &totalLen) const;
-
-  string reverseString(string str) const;
-  ReducedConcatStringTree reverse() const;
-  ReducedConcatStringTree *reverseHelper(ReducedConcatStringNode *pR) const;
-
-  int getParTreeSize(const string &query) const;
-  string getParTreeStringPreOrder(const string &query) const;
-  ReducedConcatStringNode *
-  getReducedConcatStringNode(const string &query) const;
-
-public:
-  class ReducedConcatStringNode {
-  private:
-    int length, leftLength;
-    string data;
-    ReducedConcatStringNode *pLeft, *pRight;
-    long long id;
-
-  public:
-    ReducedConcatStringNode(string data = "", const int &length = 0,
-                            const int &leftLength = 0,
-                            ReducedConcatStringNode *pL = nullptr,
-                            ReducedConcatStringNode *pR = nullptr);
-
-    bool checkDataIsNull() {
-      return (this->pRight || this->pLeft) ? true : false;
-    }
-    ~ReducedConcatStringNode(); // Need to deallocate pointer
-
-  public:
-    friend ReducedConcatStringTree;
-  };
+  // ReducedConcatStringTree subString(int from, int to) const;
+  // ReducedConcatStringTree *subStringHelper(ReducedConcatStringNode *pR,
+  //                                          int &from, int to,
+  //                                          int &totalLen) const;
+  // string reverseString(string str) const;
+  // ReducedConcatStringTree reverse() const;
+  // ReducedConcatStringTree *reverseHelper(ReducedConcatStringNode *pR) const;
+  //
+  // int getParTreeSize(const string &query) const;
+  // string getParTreeStringPreOrder(const string &query) const;
+  // ReducedConcatStringNode *
+  // getReducedConcatStringNode(const string &query) const;
 };
 
 #endif // __CONCAT_STRING_TREE_H__

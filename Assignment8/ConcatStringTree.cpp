@@ -1,6 +1,4 @@
 #include "ConcatStringTree.h"
-#include <ios>
-#include <string>
 
 long long ParentTree::globalId = 0;
 
@@ -14,9 +12,12 @@ ConcatStringTree::ConcatStringNode::ConcatStringNode(string data,
                                                      ConcatStringNode *pR)
     : data(data), length(length), leftLength(leftLength), pLeft(pL),
       pRight(pR) {
+  this->pTree = new ParentTree();
   this->pTree->insert(++ParentTree::globalId);
   this->id = ParentTree::globalId;
 }
+
+ConcatStringTree::ConcatStringNode::~ConcatStringNode() {}
 
 ConcatStringTree::ConcatStringTree(const char *s) {
   if (s) {
@@ -34,18 +35,6 @@ ConcatStringTree::ConcatStringTree(const char *s) {
 
 int ConcatStringTree::length() const { return this->pRoot->length; }
 
-int ConcatStringTree::indexOfHelper(ConcatStringNode *pR, char c) {
-  if (!pR)
-    return -1;
-  int idxLeft = indexOfHelper(pR->pLeft, c);
-  if (idxLeft != -1)
-    return idxLeft;
-  int idxRight = indexOfHelper(pR->pRight, c);
-  if (idxRight != -1)
-    return idxRight;
-  return (pR->checkDataIsNull()) ? -1 : pR->data.find(c, 0);
-}
-
 char ConcatStringTree::get(int index) {
   if (!(index >= 0 && index < this->pRoot->length)) {
     throw out_of_range("Index of string is invalid!");
@@ -60,6 +49,18 @@ char ConcatStringTree::get(int index) {
     }
   }
   return p->data[index];
+}
+
+int ConcatStringTree::indexOfHelper(ConcatStringNode *pR, char c) {
+  if (!pR)
+    return -1;
+  int idxLeft = indexOfHelper(pR->pLeft, c);
+  if (idxLeft != -1)
+    return idxLeft;
+  int idxRight = indexOfHelper(pR->pRight, c);
+  if (idxRight != -1)
+    return idxRight;
+  return (pR->checkDataIsNull()) ? -1 : pR->data.find(c, 0);
 }
 
 int ConcatStringTree::indexOf(char c) { return indexOfHelper(this->pRoot, c); }
@@ -200,23 +201,36 @@ string ConcatStringTree::getParTreeStringPreOrder(const string &query) const {
 }
 
 ConcatStringTree::~ConcatStringTree() {
-  this->pRoot->pTree->remove(this->pRoot->id);
-  this->pRoot->pLeft->pTree->remove(this->pRoot->id);
-  this->pRoot->pRight->pTree->remove(this->pRoot->id);
+  if (this->pRoot) {
+    if (this->pRoot->pLeft && this->pRoot->pLeft->pTree->size() <= 0) {
+      this->pRoot->pLeft->pTree->remove(this->pRoot->id);
+      if (this->pRoot->pTree->size() <= 0) {
+        ((ReducedConcatStringTree *)(this))
+            ->litStringHash->remove(this->pRoot->data);
+      }
+      delete this->pRoot->pLeft;
+      this->pRoot->pLeft = nullptr;
+    }
 
-  if (this->pRoot->pLeft->pTree->size() <= 0) {
-    delete this->pRoot->pLeft;
-    this->pRoot->pLeft = nullptr;
-  }
+    if (this->pRoot->pRight && this->pRoot->pRight->pTree->size() <= 0) {
+      this->pRoot->pRight->pTree->remove(this->pRoot->id);
+      if (this->pRoot->pTree->size() <= 0) {
+        ((ReducedConcatStringTree *)(this))
+            ->litStringHash->remove(this->pRoot->data);
+      }
+      delete this->pRoot->pRight;
+      this->pRoot->pRight = nullptr;
+    }
 
-  if (this->pRoot->pRight->pTree->size() <= 0) {
-    delete this->pRoot->pRight;
-    this->pRoot->pRight = nullptr;
-  }
-
-  if (this->pRoot->pTree->size() <= 0) {
-    delete this->pRoot;
-    this->pRoot = nullptr;
+    if (this->pRoot->pTree->size() <= 0) {
+      this->pRoot->pTree->remove(this->pRoot->id);
+      if (this->pRoot->pTree->size() <= 0) {
+        ((ReducedConcatStringTree *)(this))
+            ->litStringHash->remove(this->pRoot->data);
+      }
+      delete this->pRoot;
+      this->pRoot = nullptr;
+    }
   }
 }
 
@@ -398,32 +412,26 @@ void ParentTree::remove(const long long &value) {
 ////////////////////////////////////////// Vector
 ////////////////////////////////////////////
 
-template <class T> void Vector<T>::setSize(int nE) { this->nE = nE; }
-
 template <class T> Vector<T>::Vector() {
   this->nE = 0;
-  this->capacity = 50;
+  this->cap = 50;
   this->arr = new T[50];
 }
 
-template <class T> Vector<T>::Vector(int nE, int cap) {
-  this->nE = nE;
-  this->capacity = cap;
+template <class T> Vector<T>::Vector(int cap) {
+  this->nE = 0;
+  this->cap = cap;
   this->arr = new T[cap];
 }
-
-template <class T> int Vector<T>::getSize() { return this->nE; }
-
-template <class T> int Vector<T>::getCap() { return this->capacity; }
 
 template <class T> Vector<T> &Vector<T>::operator=(Vector<T> &newVec) {
   if (this != &newVec) {
     delete[] this->arr;
-    this->arr = new T[newVec.capacity];
-    for (int i = 0; i < newVec.size; i++) {
+    this->arr = new T[newVec.getCap()];
+    for (int i = 0; i < newVec.getSize(); i++) {
       this->arr[i] = newVec[i];
     }
-    this->capacity = newVec.capacity;
+    this->cap = newVec.getCap();
     this->nE = newVec.getSize();
   }
 
@@ -441,12 +449,12 @@ template <class T> Vector<T>::~Vector() {
   this->cap = 0;
 }
 
-template <class T> void Vector<T>::push_back(T newElement) {
-  if (this->nE + 1 >= this->cap) {
-    resize(this->nE, this->cap * 2);
-  }
-  this->arr[this->nE] = newElement;
+template <class T> void Vector<T>::insert(T newElement, int idx) {
+  // if (this->nE + 1 >= this->cap) {
+  //   resize(++this->nE, this->cap * 2);
+  // }
   this->nE++;
+  this->arr[idx] = newElement;
 }
 
 template <class T> void Vector<T>::resize(int nE, int cap) {
@@ -462,6 +470,103 @@ template <class T> void Vector<T>::resize(int nE, int cap) {
 
 ////////////////////////////////////////// LitStringHash
 ////////////////////////////////////////////
+long long calculatePower(int base, int powerRaised) {
+  if (powerRaised != 0)
+    return (base * calculatePower(base, powerRaised - 1));
+  else
+    return 1;
+}
 
 LitStringHash::LitStringHash(const HashConfig &hashConfig)
-    : hashConfig(hashConfig) {}
+    : hashConfig(hashConfig),
+      litStrings(Vector<LitString>(hashConfig.initSize)),
+      lastInsertedIndex(-1) {}
+
+long long LitStringHash::hashFunc(const string &s, const int &n, const int &m,
+                                  const int &p) const {
+  long long sum = 0;
+  for (int i = 0; i < n; i++) {
+    sum += (long long)s[i] * calculatePower(p, i);
+  }
+
+  return sum % m;
+}
+
+long long LitStringHash::hashProbing(const long long &hashF,
+                                     const HashConfig &hashConfig,
+                                     int idx) const {
+  return (long long)(hashF + hashConfig.c1 * idx + hashConfig.c2 * idx * idx) %
+         hashConfig.initSize;
+}
+
+int LitStringHash::quadratic(const string &s) {
+  long long hashF =
+      hashFunc(s, s.length(), this->hashConfig.initSize, this->hashConfig.p);
+  bool found = false;
+  int i = 0;
+  long long hashP = INT32_MIN;
+  for (; i < this->hashConfig.initSize && !found; i++) {
+    hashP = hashProbing(hashF, this->hashConfig, i);
+    if (this->litStrings[hashP].str == s) {
+      this->litStrings[hashP].numOfLinks++;
+      found = true;
+      break;
+    } else if (this->litStrings[hashP].numOfLinks == 0) {
+      this->litStrings.insert(LitString(s, 1), hashP);
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    throw runtime_error("No possible slot");
+  }
+
+  double loadFactor = ((double)this->litStrings.nE / this->hashConfig.initSize);
+  if (loadFactor > this->hashConfig.lambda) {
+    int newSize = (int)(this->hashConfig.alpha * this->hashConfig.initSize);
+    this->litStrings.resize(this->litStrings.nE, newSize);
+  }
+
+  this->lastInsertedIndex = i;
+  return i;
+}
+
+int LitStringHash::getLastInsertedIndex() const {
+  return this->lastInsertedIndex;
+}
+
+string LitStringHash::toString() const {
+  string result = "LitStringHash[";
+  for (int i = 0; i < this->litStrings.nE; i++) {
+    result += (this->litStrings.arr[i].numOfLinks > 0)
+                  ? "(litS=\"" + this->litStrings.arr[i].str + "\");"
+                  : "();";
+  }
+  result[result.length() - 1] = ']';
+  return result;
+}
+
+void LitStringHash::remove(const string &s) {
+  for (int i = 0; i < this->litStrings.nE; i++) {
+    if (this->litStrings[i].str == s) {
+      this->litStrings[i].str = "";
+      this->litStrings[i].numOfLinks = 0;
+      this->litStrings.nE--;
+      break;
+    }
+  }
+  this->lastInsertedIndex = -1;
+}
+
+////////////////////////////////////////// ReducedConcatStringTree
+////////////////////////////////////////////
+
+ReducedConcatStringTree::ReducedConcatStringTree(const char *s,
+                                                 LitStringHash *litStringHash)
+    : ConcatStringTree(s) {
+
+  this->litStringHash = litStringHash;
+  this->litStringHash->quadratic(this->pRoot->data);
+}
+
+ReducedConcatStringTree::~ReducedConcatStringTree() {}
