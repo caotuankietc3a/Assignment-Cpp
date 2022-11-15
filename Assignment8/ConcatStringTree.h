@@ -12,10 +12,12 @@ public:
 
 private:
   ConcatStringNode *pRoot;
+  bool isCSTree;
 
 public:
-  ConcatStringTree(const char *s);
-  ConcatStringTree(ConcatStringNode *pR = nullptr) : pRoot(pR) {}
+  ConcatStringTree(const char *s, bool isCSTree = true);
+  ConcatStringTree(ConcatStringNode *pR = nullptr, bool isCSTree = true)
+      : pRoot(pR), isCSTree(isCSTree) {}
   ~ConcatStringTree();
   int length() const;
   char get(int index);
@@ -179,6 +181,8 @@ private:
 
 public:
   LitStringHash(const HashConfig &hashConfig);
+  ~LitStringHash();
+
   int getLastInsertedIndex() const;
 
   string toStringHelper(const Vector<LitString> &vecLitStrings) const;
@@ -197,7 +201,7 @@ private:
 
 class ReducedConcatStringTree : public ConcatStringTree {
 public:
-  LitStringHash *litStringHash;
+  LitStringHash *litStringHash = nullptr;
   ReducedConcatStringTree(const char *s, LitStringHash *litStringHash);
   ~ReducedConcatStringTree();
 

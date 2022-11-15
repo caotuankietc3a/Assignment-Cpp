@@ -19,7 +19,7 @@ ConcatStringTree::ConcatStringNode::ConcatStringNode(string data,
 
 ConcatStringTree::ConcatStringNode::~ConcatStringNode() {}
 
-ConcatStringTree::ConcatStringTree(const char *s) {
+ConcatStringTree::ConcatStringTree(const char *s, bool isCSTree) {
   if (s) {
     const char *i = s;
     int sLength = 0;
@@ -30,6 +30,7 @@ ConcatStringTree::ConcatStringTree(const char *s) {
       sLength++;
     }
     this->pRoot = new ConcatStringNode(str, sLength);
+    this->isCSTree = isCSTree;
   }
 }
 
@@ -69,16 +70,21 @@ string ConcatStringTree::toStringPreOrderHelper(ConcatStringNode *pR) const {
   if (!pR)
     return "";
   string result =
-      to_string(pR->leftLength) + "," + to_string(pR->length) + "," +
-      (pR->checkDataIsNull() ? "<NULL>;" : ("\"" + pR->data + "\";"));
+      "(LL=" + to_string(pR->leftLength) + ",L=" + to_string(pR->length) + "," +
+      (pR->checkDataIsNull() ? "<NULL>);" : ("\"" + pR->data + "\");"));
 
   return result + toStringPreOrderHelper(pR->pLeft) +
          toStringPreOrderHelper(pR->pRight);
 }
 
 string ConcatStringTree::toStringPreOrder() const {
-  string str = "ConcatStringTree[" + toStringPreOrderHelper(this->pRoot);
-  str[str.length() - 1] = ']';
+  string str = "ConcatStringTree[";
+  if (this->pRoot) {
+    str += toStringPreOrderHelper(this->pRoot);
+    str[str.length() - 1] = ']';
+  } else {
+    str += "]";
+  }
   return str;
 }
 
@@ -114,14 +120,32 @@ ConcatStringTree *ConcatStringTree::subStringHelper(ConcatStringNode *pR,
   ConcatStringTree *tRight = subStringHelper(pR->pRight, from, to, totalLen);
 
   if (pR->checkDataIsNull()) {
+    if (!tLeft && tRight) {
+      ConcatStringTree *concatStringTree =
+          new ConcatStringTree(new ConcatStringNode("", tRight->length(), 0,
+                                                    nullptr, tRight->pRoot));
+      if (concatStringTree->pRoot->pRight)
+        concatStringTree->pRoot->pRight->pTree->insert(ParentTree::globalId);
+      return concatStringTree;
+    }
+
+    if (!tRight && tLeft) {
+      ConcatStringTree *concatStringTree =
+          new ConcatStringTree(new ConcatStringNode(
+              "", tLeft->length(), tLeft->length(), tLeft->pRoot, nullptr));
+      if (concatStringTree->pRoot->pLeft)
+        concatStringTree->pRoot->pRight->pTree->insert(ParentTree::globalId);
+      return concatStringTree;
+    }
+
     return new ConcatStringTree(tLeft->concat(*tRight));
   }
 
   string str = "";
   if (pR->length + totalLen <= to) {
     if (from >= pR->length) {
-      from -= totalLen;
       totalLen += pR->length;
+      from -= pR->length;
       return nullptr;
     }
     str = pR->data.substr(from, pR->length);
@@ -163,7 +187,25 @@ ConcatStringTree *ConcatStringTree::reverseHelper(ConcatStringNode *pR) const {
   ConcatStringTree *tLeft = reverseHelper(pR->pLeft);
 
   if (pR->checkDataIsNull()) {
-    return new ConcatStringTree(tLeft->concat(*tRight));
+    if (!tLeft && tRight) {
+      ConcatStringTree *concatStringTree =
+          new ConcatStringTree(new ConcatStringNode("", tRight->length(), 0,
+                                                    nullptr, tRight->pRoot));
+      if (concatStringTree->pRoot->pRight)
+        concatStringTree->pRoot->pRight->pTree->insert(ParentTree::globalId);
+      return concatStringTree;
+    }
+
+    if (!tRight && tLeft) {
+      ConcatStringTree *concatStringTree =
+          new ConcatStringTree(new ConcatStringNode(
+              "", tLeft->length(), tLeft->length(), tLeft->pRoot, nullptr));
+      if (concatStringTree->pRoot->pLeft)
+        concatStringTree->pRoot->pRight->pTree->insert(ParentTree::globalId);
+      return concatStringTree;
+    }
+
+    return new ConcatStringTree(tRight->concat(*tLeft));
   }
 
   string str = reverseString(pR->data);
@@ -202,31 +244,44 @@ string ConcatStringTree::getParTreeStringPreOrder(const string &query) const {
 
 ConcatStringTree::~ConcatStringTree() {
   if (this->pRoot) {
-    if (this->pRoot->pLeft && this->pRoot->pLeft->pTree->size() <= 0) {
+    if (this->pRoot->pLeft) {
       this->pRoot->pLeft->pTree->remove(this->pRoot->id);
-      if (this->pRoot->pTree->size() <= 0) {
-        ((ReducedConcatStringTree *)(this))
-            ->litStringHash->remove(this->pRoot->data);
+      if (this->pRoot->pLeft->pTree->size() <= 0) {
+        if (this->pRoot->pTree->size() <= 0) {
+          if (!this->isCSTree) {
+            ReducedConcatStringTree *RCSTree =
+                (ReducedConcatStringTree *)(this);
+            if (RCSTree->litStringHash)
+              RCSTree->litStringHash->remove(this->pRoot->data);
+          }
+        }
+        delete this->pRoot->pLeft;
+        this->pRoot->pLeft = nullptr;
       }
-      delete this->pRoot->pLeft;
-      this->pRoot->pLeft = nullptr;
     }
 
-    if (this->pRoot->pRight && this->pRoot->pRight->pTree->size() <= 0) {
+    if (this->pRoot->pRight) {
       this->pRoot->pRight->pTree->remove(this->pRoot->id);
-      if (this->pRoot->pTree->size() <= 0) {
-        ((ReducedConcatStringTree *)(this))
-            ->litStringHash->remove(this->pRoot->data);
+      if (this->pRoot->pRight->pTree->size() <= 0) {
+        if (this->pRoot->pTree->size() <= 0) {
+          if (!this->isCSTree) {
+            ReducedConcatStringTree *RCSTree =
+                (ReducedConcatStringTree *)(this);
+            if (RCSTree->litStringHash)
+              RCSTree->litStringHash->remove(this->pRoot->data);
+          }
+        }
+        delete this->pRoot->pRight;
+        this->pRoot->pRight = nullptr;
       }
-      delete this->pRoot->pRight;
-      this->pRoot->pRight = nullptr;
     }
 
+    this->pRoot->pTree->remove(this->pRoot->id);
     if (this->pRoot->pTree->size() <= 0) {
-      this->pRoot->pTree->remove(this->pRoot->id);
-      if (this->pRoot->pTree->size() <= 0) {
-        ((ReducedConcatStringTree *)(this))
-            ->litStringHash->remove(this->pRoot->data);
+      if (!this->isCSTree) {
+        ReducedConcatStringTree *RCSTree = (ReducedConcatStringTree *)(this);
+        if (RCSTree->litStringHash)
+          RCSTree->litStringHash->remove(this->pRoot->data);
       }
       delete this->pRoot;
       this->pRoot = nullptr;
@@ -249,8 +304,13 @@ string ParentTree::toStringPreOrderHelper(ParentNode *pR) const {
 }
 
 string ParentTree::toStringPreOrder() const {
-  string str = "ParentsTree[" + toStringPreOrderHelper(this->pRoot);
-  str[str.length() - 1] = ']';
+  string str = "ParentsTree[";
+  if (this->pRoot) {
+    str += toStringPreOrderHelper(this->pRoot);
+    str[str.length() - 1] = ']';
+  } else {
+    str += "]";
+  }
   return str;
 }
 
@@ -450,9 +510,6 @@ template <class T> Vector<T>::~Vector() {
 }
 
 template <class T> void Vector<T>::insert(T newElement, int idx) {
-  // if (this->nE + 1 >= this->cap) {
-  //   resize(++this->nE, this->cap * 2);
-  // }
   this->nE++;
   this->arr[idx] = newElement;
 }
@@ -481,6 +538,8 @@ LitStringHash::LitStringHash(const HashConfig &hashConfig)
     : hashConfig(hashConfig),
       litStrings(Vector<LitString>(hashConfig.initSize)),
       lastInsertedIndex(-1) {}
+
+LitStringHash::~LitStringHash() {}
 
 long long LitStringHash::hashFunc(const string &s, const int &n, const int &m,
                                   const int &p) const {
@@ -524,11 +583,12 @@ int LitStringHash::quadratic(const string &s) {
   double loadFactor = ((double)this->litStrings.nE / this->hashConfig.initSize);
   if (loadFactor > this->hashConfig.lambda) {
     int newSize = (int)(this->hashConfig.alpha * this->hashConfig.initSize);
+    this->hashConfig.initSize = newSize;
     this->litStrings.resize(this->litStrings.nE, newSize);
   }
 
-  this->lastInsertedIndex = i;
-  return i;
+  this->lastInsertedIndex = hashP;
+  return hashP;
 }
 
 int LitStringHash::getLastInsertedIndex() const {
@@ -537,12 +597,16 @@ int LitStringHash::getLastInsertedIndex() const {
 
 string LitStringHash::toString() const {
   string result = "LitStringHash[";
-  for (int i = 0; i < this->litStrings.nE; i++) {
-    result += (this->litStrings.arr[i].numOfLinks > 0)
-                  ? "(litS=\"" + this->litStrings.arr[i].str + "\");"
-                  : "();";
+  if (this->litStrings.nE != 0) {
+    for (int i = 0; i < this->litStrings.cap; i++) {
+      result += (this->litStrings.arr[i].numOfLinks > 0)
+                    ? "(litS=\"" + this->litStrings.arr[i].str + "\");"
+                    : "();";
+    }
+    result[result.length() - 1] = ']';
+  } else {
+    result += "]";
   }
-  result[result.length() - 1] = ']';
   return result;
 }
 
@@ -563,10 +627,12 @@ void LitStringHash::remove(const string &s) {
 
 ReducedConcatStringTree::ReducedConcatStringTree(const char *s,
                                                  LitStringHash *litStringHash)
-    : ConcatStringTree(s) {
+    : ConcatStringTree(s, false) {
 
   this->litStringHash = litStringHash;
   this->litStringHash->quadratic(this->pRoot->data);
 }
 
-ReducedConcatStringTree::~ReducedConcatStringTree() {}
+ReducedConcatStringTree::~ReducedConcatStringTree() {
+  this->litStringHash = nullptr;
+}
